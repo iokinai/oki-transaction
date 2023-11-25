@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Error};
 use sha2::{Sha256, Digest};
 use super::{EncryptedCardInfo, CBCAES256, okicrypto, AccountInfo};
 
@@ -56,6 +56,12 @@ impl OkiRequest {
         let checksum = sha256.finalize().into();
 
         OkiRequest { sender, receiver, amount, checksum, keysalt }
+    }
+
+
+    /// Serializes `self` and returns JSON string
+    pub fn as_json(&self) -> Result<String> {
+        serde_json::to_string(self)
     }
 
     /// Returns self.sender
