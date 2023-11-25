@@ -5,6 +5,8 @@ use rand::Rng;
 use super::Cipher;
 
 #[derive(Serialize, Deserialize)]
+
+/// Represents an AES encryption algorithm in CBC mode
 pub struct CBCAES256;
 
 impl Cipher for CBCAES256 {
@@ -54,6 +56,11 @@ impl Cipher for CBCAES256 {
 }
 
 impl CBCAES256 {
+    /// Generated random Initialize Vector (IV)
+    /// # Parameters
+    /// * `size` - size of IV
+    /// # Returns 
+    /// Generated IV
     fn generate_random_iv(size: usize) -> Vec<u8> {
         let mut rng = rand::thread_rng();
 

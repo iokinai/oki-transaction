@@ -1,3 +1,2 @@
-#![warn(missing_docs)]
-
+/// Provides models for oki-transaction
 pub mod models;

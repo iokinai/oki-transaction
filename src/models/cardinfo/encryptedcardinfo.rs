@@ -21,24 +21,31 @@ pub struct EncryptedCardInfo<T> {
 }
 
 impl<T: Cipher> EncryptedCardInfo<T> {
+    /// Creates new instance of `EncryptedCardInfo<T>`
+    /// # Parameters 
+    /// * `ci` - user's raw card info
+    /// * `key` - encryption key
     pub fn create(ci: &RawCardInfo, key: &Vec<u8>) -> EncryptedCardInfo<T> {
         EncryptedCardInfo {
             enc: None,
-            number: T::encrypt(key, &ci.get_number().as_bytes().to_vec()),
-            expire: T::encrypt(key, &ci.get_expires().timestamp().to_le_bytes().to_vec()),
-            cvc: T::encrypt(key, &ci.get_cvc().to_le_bytes().to_vec()),
+            number: T::encrypt(key, &ci.number().as_bytes().to_vec()),
+            expire: T::encrypt(key, &ci.expire().timestamp().to_le_bytes().to_vec()),
+            cvc: T::encrypt(key, &ci.cvc().to_le_bytes().to_vec()),
         }
     }
 
-    pub fn get_encrypted_number(&self) -> &Vec<u8> {
+    /// Returns self.number
+    pub fn number(&self) -> &Vec<u8> {
         &self.number
     }
 
-    pub fn get_encrypted_expire_date(&self) -> &Vec<u8> {
+    /// Returns self.expire
+    pub fn expire(&self) -> &Vec<u8> {
         &self.expire
     }
 
-    pub fn get_encrypted_cvc(&self) -> &Vec<u8> {
+    /// Returns self.cvc
+    pub fn cvc(&self) -> &Vec<u8> {
         &self.cvc
     }
 
@@ -46,13 +53,13 @@ impl<T: Cipher> EncryptedCardInfo<T> {
     /// # Parameters 
     /// * `key` - encryption key of type `&Vec<u8>`
     pub fn decrypt(&self, key: &Vec<u8>) -> Result<RawCardInfo, FromBytesError> {
-        let secs_bytes = T::decrypt(key, self.get_encrypted_expire_date());
+        let secs_bytes = T::decrypt(key, self.expire());
 
         if secs_bytes.len() != 8  {
             return Result::Err(FromBytesError {  })
         }
 
-        let cvc_bytes = T::decrypt(key, self.get_encrypted_cvc());
+        let cvc_bytes = T::decrypt(key, self.cvc());
 
         if cvc_bytes.len() != 8 {
             return Result::Err(FromBytesError{})
@@ -60,7 +67,7 @@ impl<T: Cipher> EncryptedCardInfo<T> {
 
         let secs = i64::from_le_bytes(secs_bytes.try_into().unwrap());
         let cvc = u16::from_le_bytes(cvc_bytes.try_into().unwrap());
-        let from_utf8 = String::from_utf8(T::decrypt(&key, self.get_encrypted_number()));
+        let from_utf8 = String::from_utf8(T::decrypt(&key, self.number()));
 
         Ok(RawCardInfo::new(from_utf8.unwrap(), DateTime::from_timestamp(secs, 0).unwrap(), cvc))
     }

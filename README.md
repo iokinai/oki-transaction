@@ -44,7 +44,7 @@ Here,
 #### Encryption key:
 Encryption key should be a PBKDF2 key with following parameters:
 * `PRF` - HMAC with SHA-256 hash function
-* `Password` - concatenation of sender's username and password and receiver's username and password that looks like `"'sender-username''sender-password''receiver-username''receiver-password'"`. For example, if we have: 
+* `Password` - concatenation of sender's username and password lower-cased hex-stringified sha3-256 hash and receiver's username and password sha3-256 hash that looks like `"'sender-username''sender-password-hash''receiver-username''receiver-password-hash'"`. For example, if we have: 
 ```javascript
 sender: {
     username: "sender",
@@ -56,7 +56,7 @@ receiver: {
     password: "password1"
 }
 ```
-then `Password` will look like `"senderpassword1receiverpassword2"`
+then `Password` will look like `"senderc8eb6be7da27a445473bc50d1bbf60d91e06b1332156ffdd252d87270bf351bfreceiverb23a27949d63ec1acc7f39912237881cf86b8f3f59d1269b2cdb6dfcf879d6bb"`
 The fact that the key uses the data of both users, and not just the one whose data is encrypted, guarantees that during interception an attacker will not be able to replace the receiver's data with his own.
 * `Salt` - random 16 bytes (128 bits), which are transferred in `keysalt` field
 * `c` - 25_000
@@ -64,29 +64,38 @@ The fact that the key uses the data of both users, and not just the one whose da
 
 For example PBKDF2 with following parameters:
 
-* `Password` - `senderpassword1receiverpassword2`
+* `Password` - `senderc8eb6be7da27a445473bc50d1bbf60d91e06b1332156ffdd252d87270bf351bfreceiverb23a27949d63ec1acc7f39912237881cf86b8f3f59d1269b2cdb6dfcf879d6bb`
 * `Salt` - `ppt8FWth+EJ2ajP8`
 
-will generate hex string `fb63d980ed9b1da1e257b41c699a3c92`.
+will generate hex string `fa2e7780a138c523ddc4dabc69d71c01`.
 
 In Rust it can be described with following code:
 
 ```rust
 let mut key = [0u8; 16];
-pbkdf2_hmac::<Sha256>(b"senderpassword1receiverpassword2", b"ppt8FWth+EJ2ajP8", 25_000, &mut key);
+pbkdf2_hmac::<Sha256>(b"senderc8eb6be7da27a445473bc50d1bbf60d91e06b1332156ffdd252d87270bf351bfreceiverb23a27949d63ec1acc7f39912237881cf86b8f3f59d1269b2cdb6dfcf879d6bb", b"ppt8FWth+EJ2ajP8", 25_000, &mut key);
 println!("{:x?}", key);
 ```
 
 This code will print:
 
 ```rust
-[fb, 63, d9, 80, ed, 9b, 1d, a1, e2, 57, b4, 1c, 69, 9a, 3c, 92]
+[fa, 2e, 77, 80, a1, 38, c5, 23, dd, c4, da, bc, 69, d7, 1c, 1]
 ```
 
 ### Other fields
 
 * `amount` represent the amount of the transaction, it is of type `float64` with two digits after comma.
-* `sha256_checksum` represent the checksum which is calculated with SHA-256 by concatenation of lowercased hex-stringified `sender.aes_encrypted_card_number`, `receiver.aes_encrypted_card_number` and `amount`, it is of type byte array.
+* `checksum` represent the checksum which is calculated with SHA-256 by concatenation of lowercased hex-stringified `sender.aes_encrypted_card_number`, `receiver.aes_encrypted_card_number` and rounded to 2 digits after comma `amount`, it is of type byte array. 
+
+For example, if you have:
+
+`sender.aes_encrypted_card_number` = `0000000000000000`,
+`receiver.aes_encrypted_card_number` = `1111111111111111`,
+`amount` = `100.0`,
+
+then you will hash the `00000000000000001111111111111111100.0` string and get `770b4a7375b328eeb6f4e4b30e508a42929ae73c1b68d547e00c658d566561dc`.
+
 * `keysalt` is 16 bytes array that represents a salt used in key generation. See [Encryption Key](#encryption-key) for more information.
 
 You can find examples in the [examples](examples/) directory. 
