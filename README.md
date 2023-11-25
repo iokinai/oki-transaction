@@ -92,9 +92,9 @@ For example, if you have:
 
 `sender.aes_encrypted_card_number` = `0000000000000000`,
 `receiver.aes_encrypted_card_number` = `1111111111111111`,
-`amount` = `100.0`,
+`amount` = `100.00`,
 
-then you will hash the `00000000000000001111111111111111100.0` string and get `770b4a7375b328eeb6f4e4b30e508a42929ae73c1b68d547e00c658d566561dc`.
+then you will hash the `00000000000000001111111111111111100.00` string and get `9b1cc5a9ed9928d46d44064701ae57f125e634b4877985eb7ffcdad1a9dde674`.
 
 * `keysalt` is 16 bytes array that represents a salt used in key generation. See [Encryption Key](#encryption-key) for more information.
 
