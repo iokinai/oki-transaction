@@ -1,5 +1,9 @@
-use serde::{Deserialize, Serialize, de::Error};
+use std::fmt::Display;
+
+use serde::{Deserialize, Serialize};
+use serde_json::Error;
 use sha2::{Sha256, Digest};
+use sha2::digest::{core_api::{CoreProxy, UpdateCore, FixedOutputCore, BufferKindUser}, HashMarker, block_buffer::Eager, crypto_common::BlockSizeUser, typenum::{IsLess, U256, NonZero, Le}};
 use super::{EncryptedCardInfo, CBCAES256, okicrypto, AccountInfo};
 
 /// Represents request 
@@ -18,16 +22,22 @@ impl OkiRequest {
     /// * `sender` - sender's account info
     /// * `receiver` - receiver's account info
     /// * `amount` - transaction's amount
-    pub fn new(sender: &AccountInfo, receiver: &AccountInfo, amount: f64) -> OkiRequest {
+    pub fn new<D>(sender: &AccountInfo, receiver: &AccountInfo, amount: f64) -> OkiRequest
+        where
+            D: CoreProxy,
+            D::Core: Sync + HashMarker + UpdateCore + FixedOutputCore + BufferKindUser<BufferKind = Eager> + Default + Clone,
+            <D::Core as BlockSizeUser>::BlockSize: IsLess<U256>,
+            Le<<D::Core as BlockSizeUser>::BlockSize, U256>: NonZero,
+     {
         let salt = okicrypto::generate_salt();
-        let password = format!("{}{}{}{}", sender.get_name(), hex::encode(sender.get_password_hash()), receiver.get_name(), hex::encode(receiver.get_password_hash()));
-        let key = okicrypto::generate_key(password, &salt);
+        let password = format!("{}{}{}{}", sender.name(), hex::encode(sender.password_hash()), receiver.name(), hex::encode(receiver.password_hash()));
+        let key = okicrypto::generate_key::<D>(password, &salt);
 
-        let encrypted_sender = sender.get_card().encrypt(&key.to_vec());
-        let encrypted_receiver = receiver.get_card().encrypt(&key.to_vec());
+        let encrypted_sender = sender.card().encrypt(&key.to_vec());
+        let encrypted_receiver = receiver.card().encrypt(&key.to_vec());
 
         let mut sha256 = Sha256::new();
-        let string_to_hash = format!("{}{}{}", sender.get_card().number(), receiver.get_card().number(), format!("{:.2}", amount));
+        let string_to_hash = format!("{}{}{}", sender.card().number(), receiver.card().number(), format!("{:.2}", amount));
 
         sha256.update(string_to_hash);
 
@@ -60,32 +70,38 @@ impl OkiRequest {
 
 
     /// Serializes `self` and returns JSON string
-    pub fn as_json(&self) -> Result<String> {
+    pub fn as_json(&self) -> Result<String, Error> {
         serde_json::to_string(self)
     }
 
-    /// Returns self.sender
+    /// Returns `self.sender`
     pub fn sender(&self) -> &EncryptedCardInfo<CBCAES256> {
         &self.sender
     }
 
-    /// Return self.receiver
+    /// Returns `self.receiver`
     pub fn receiver(&self) -> &EncryptedCardInfo<CBCAES256> {
         &self.receiver
     }
 
-    /// Returns self.amount
+    /// Returns `self.amount`
     pub fn amount(&self) -> f64 {
         self.amount
     }
 
-    /// Returns self.checksum
+    /// Returns `self.checksum`
     pub fn checksum(&self) -> [u8; 32] {
         self.checksum
     }
 
-    /// Return self.keysalt
+    /// Return `self.keysalt`
     pub fn keysalt(&self) -> [u8; 16] {
         self.keysalt
+    }
+}
+
+impl Display for OkiRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", format!("[Sender: {}\nReceiver: {}\nAmount: {}\nChecksum: {}\nKeysalt: {}]", self.sender(), self.receiver(), self.amount(), hex::encode(self.checksum()), hex::encode(self.keysalt())))
     }
 }

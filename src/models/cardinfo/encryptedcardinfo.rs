@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use chrono::DateTime;
 use serde::{Serialize, Deserialize};
 
@@ -15,7 +16,7 @@ use crate::models::FromBytesError;
 #[derive(Serialize, Deserialize)]
 pub struct EncryptedCardInfo<T> {
     enc: Option<T>,
-    number: Vec<u8>,
+    number: String,
     expire: Vec<u8>,
     cvc: Vec<u8>,
 }
@@ -28,23 +29,23 @@ impl<T: Cipher> EncryptedCardInfo<T> {
     pub fn create(ci: &RawCardInfo, key: &Vec<u8>) -> EncryptedCardInfo<T> {
         EncryptedCardInfo {
             enc: None,
-            number: T::encrypt(key, &ci.number().as_bytes().to_vec()),
+            number: ci.number().to_string(),
             expire: T::encrypt(key, &ci.expire().timestamp().to_le_bytes().to_vec()),
             cvc: T::encrypt(key, &ci.cvc().to_le_bytes().to_vec()),
         }
     }
 
-    /// Returns self.number
-    pub fn number(&self) -> &Vec<u8> {
+    /// Returns `self.number`
+    pub fn number(&self) -> &String {
         &self.number
     }
 
-    /// Returns self.expire
+    /// Returns `self.expire`
     pub fn expire(&self) -> &Vec<u8> {
         &self.expire
     }
 
-    /// Returns self.cvc
+    /// Returns `self.cvc`
     pub fn cvc(&self) -> &Vec<u8> {
         &self.cvc
     }
@@ -67,8 +68,13 @@ impl<T: Cipher> EncryptedCardInfo<T> {
 
         let secs = i64::from_le_bytes(secs_bytes.try_into().unwrap());
         let cvc = u16::from_le_bytes(cvc_bytes.try_into().unwrap());
-        let from_utf8 = String::from_utf8(T::decrypt(&key, self.number()));
 
-        Ok(RawCardInfo::new(from_utf8.unwrap(), DateTime::from_timestamp(secs, 0).unwrap(), cvc))
+        Ok(RawCardInfo::new(self.number.clone(), DateTime::from_timestamp(secs, 0).unwrap(), cvc))
+    }
+}
+
+impl<T: Cipher> Display for EncryptedCardInfo<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", format!("[Number: {}\nExpire: {}\nCvc: {}]", self.number(), hex::encode(self.expire()), hex::encode(self.cvc())))
     }
 }

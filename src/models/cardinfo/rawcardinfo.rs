@@ -20,17 +20,17 @@ impl RawCardInfo {
         RawCardInfo { number: clear_number, expire: expires, cvc }
     }
 
-    /// Returns self.number
+    /// Returns `self.number`
     pub fn number(&self) -> &String {
         &self.number
     }
 
-    /// Returns self.expire
+    /// Returns `self.expire`
     pub fn expire(&self) -> &DateTime<Utc> {
         &self.expire
     }
 
-    /// Returns self.cvc
+    /// Returns `self.cvc`
     pub fn cvc(&self) -> u16 {
         self.cvc
     }

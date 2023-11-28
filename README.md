@@ -9,13 +9,13 @@ Data sends as a plain JSON text structured like this:
 {
     sender: {
         enc: null
-        number: aes_encrypted_card_number,
+        number: card_number,
         expire: aes_encrypted_card_expiry_date_in_the_unix_timestamp_format,
         cvc: aes_encrypted_card_cvc_code
     },
     receiver: {
         enc: null
-        number: aes_encrypted_card_number,
+        number: card_number,
         expire: aes_encrypted_card_expiry_date_in_the_unix_timestamp_format,
         cvc: aes_encrypted_card_cvc_code
     },
@@ -29,22 +29,24 @@ Data sends as a plain JSON text structured like this:
 Here, 
 * `sender` and `receiver` represent the card data of sender and receiver, respectively. They have the following subfields:
 
+#### Number
+* `number` should be card number of type utf-8 string (as one word). For example, `"2400 3500 2200 5566"` is wrong whereas `"2400350022005566" is correct`
+
 #### Encrypted fields:
 * `enc` should be `null`
-* `number`, `expire`, `cvc` should be of type byte array
+* `expire`, `cvc` should be of type byte array
 
 #### Encryption algorithm:
 * We use AES algorithm with CBC mode to encrypt data.
 
 #### Raw data to encrypt:
-* Raw `number` should be card number of type utf-8 string (as one word). For example, `"2400 3500 2200 5566"` is wrong whereas `"2400350022005566" is correct`
 * Raw `expire` should be of type `int64`, Unix timestamp format (in seconds), bytes should be in little-endian order\*
 * Raw `cvc` should be of type `unsigned int16`, bytes should be in little-endian order\*
 
 #### Encryption key:
 Encryption key should be a PBKDF2 key with following parameters:
 * `PRF` - HMAC with SHA-256 hash function
-* `Password` - concatenation of sender's username and password lower-cased hex-stringified sha3-256 hash and receiver's username and password sha3-256 hash that looks like `"'sender-username''sender-password-hash''receiver-username''receiver-password-hash'"`. For example, if we have: 
+* `Password` - concatenation of sender's username and password lower-cased hex-stringified hash in algorithm you use to store passwords and receiver's username and password hash that looks like `"'sender-username''sender-password-hash''receiver-username''receiver-password-hash'"`. For example, if we have: 
 ```javascript
 sender: {
     username: "sender",
@@ -66,6 +68,7 @@ For example PBKDF2 with following parameters:
 
 * `Password` - `senderc8eb6be7da27a445473bc50d1bbf60d91e06b1332156ffdd252d87270bf351bfreceiverb23a27949d63ec1acc7f39912237881cf86b8f3f59d1269b2cdb6dfcf879d6bb`
 * `Salt` - `ppt8FWth+EJ2ajP8`
+* `algorithm` - `SHA3-256`
 
 will generate hex string `fa2e7780a138c523ddc4dabc69d71c01`.
 
@@ -73,7 +76,7 @@ In Rust it can be described with following code:
 
 ```rust
 let mut key = [0u8; 16];
-pbkdf2_hmac::<Sha256>(b"senderc8eb6be7da27a445473bc50d1bbf60d91e06b1332156ffdd252d87270bf351bfreceiverb23a27949d63ec1acc7f39912237881cf86b8f3f59d1269b2cdb6dfcf879d6bb", b"ppt8FWth+EJ2ajP8", 25_000, &mut key);
+pbkdf2_hmac::<Sha3256>(b"senderc8eb6be7da27a445473bc50d1bbf60d91e06b1332156ffdd252d87270bf351bfreceiverb23a27949d63ec1acc7f39912237881cf86b8f3f59d1269b2cdb6dfcf879d6bb", b"ppt8FWth+EJ2ajP8", 25_000, &mut key);
 println!("{:x?}", key);
 ```
 
@@ -86,12 +89,12 @@ This code will print:
 ### Other fields
 
 * `amount` represent the amount of the transaction, it is of type `float64` with two digits after comma.
-* `checksum` represent the checksum which is calculated with SHA-256 by concatenation of lowercased hex-stringified `sender.aes_encrypted_card_number`, `receiver.aes_encrypted_card_number` and rounded to 2 digits after comma `amount`, it is of type byte array. 
+* `checksum` represent the checksum which is calculated with SHA-256 by concatenation of lowercased hex-stringified `sender.card_number`, `receiver.card_number` and rounded to 2 digits after comma `amount`, it is of type byte array. 
 
 For example, if you have:
 
-`sender.aes_encrypted_card_number` = `0000000000000000`,
-`receiver.aes_encrypted_card_number` = `1111111111111111`,
+`sender.card_number` = `0000000000000000`,
+`receiver.card_number` = `1111111111111111`,
 `amount` = `100.00`,
 
 then you will hash the `00000000000000001111111111111111100.00` string and get `9b1cc5a9ed9928d46d44064701ae57f125e634b4877985eb7ffcdad1a9dde674`.

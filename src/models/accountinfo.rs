@@ -16,18 +16,18 @@ impl AccountInfo {
         AccountInfo { name, password_hash, card }
     }
 
-    /// Returns self.name
-    pub fn get_name(&self) -> &String {
+    /// Returns `self.name`
+    pub fn name(&self) -> &String {
         &self.name
     }
 
-    /// Returns self.password_hash
-    pub fn get_password_hash(&self) -> &Vec<u8> {
+    /// Returns `self.password_hash`
+    pub fn password_hash(&self) -> &Vec<u8> {
         &self.password_hash
     }
 
     /// Returns self.card
-    pub fn get_card(&self) -> &RawCardInfo {
+    pub fn card(&self) -> &RawCardInfo {
         &self.card
     }
 }

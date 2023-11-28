@@ -17,5 +17,6 @@ fn main() {
     let sender = AccountInfo::new("nobody".to_string(), sender_password_bytes.to_vec(), RawCardInfo::new("4506 4405 3322 5050".to_string(), DateTime::from_timestamp(1917032400, 0).unwrap(), 304));
     let receiver = AccountInfo::new("okinai".to_string(), receiver_password_bytes.to_vec(), RawCardInfo::new("2200 0303 0404 0505".to_string(), DateTime::from_timestamp(1853960400, 0).unwrap(), 945));
 
-    let transaction = OkiRequest::new(&sender, &receiver, 3000f64);
+    let transaction = OkiRequest::new::<Sha256>(&sender, &receiver, 3000f64);
+    println!("{}", transaction)
 }
